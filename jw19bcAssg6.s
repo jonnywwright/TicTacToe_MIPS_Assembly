@@ -11,9 +11,11 @@
 #BOARD:  .word      0, 0, 0, 1, 1, 1, 2, 2, 2
 #BOARD:  .word      0, 0, 0, 0, 0, 0, 0, 0, 0
 #BOARD:  .word      1, 1, 1, 1, 2, 1, 1, 1, 1
-BOARD: .word        1, 2, 3, 1, 5, 6, 1, 9, 9
+#BOARD: .word        1, 2, 3, 1, 5, 6, 1, 9, 9
 #BOARD: .word        1, 2, 3, 1, 2, 3, 1, 2, 3
 #BOARD: .word 1, 2, 3, 4, 5, 6, 7, 8, 9
+BOARD: .word 1, 2, 3, 4, 1, 6, 7, 8, 1
+#BOARD: .word 1, 2, 3, 4, 3, 6, 3, 8, 9
 
 WELCOMEUSER:    .asciiz     "Welcome to Tic-Tac-Toe\nI'll go first!\n"
 ASKFORINPUT:    .asciiz     "Enter a position between 1 and 9\n"
@@ -33,8 +35,6 @@ sw      $ra,0($sp)
 jal     PRINTBOARD
 lw      $ra,0($sp)
 addiu   $sp,$sp,4
-
-
 
 
 jr		$ra					# Exit game
@@ -195,7 +195,56 @@ jr  $ra
 
 
 ### CHECKS IF DIAGNOL AT POSITION IS WON BY ANY PLAYER
+### position passed in via $s3
 DIAGNOLISWON:
+# 2, 4, 6, 8 are all not compatible with diagnols, all r even
+# if even number kick out to not win exit
+li $t0, 2   # store 2 in $t0
+div $s3,$t0
+mfhi $a0    # put the remainder in $a0
+beq $zero,$a0,DIAGNOLNOTWONEXIT
+la   $t0,BOARD
+
+### THIS IS PAINFUL, PROBABLY A BETTER WAY TO DO THIS BUT WTH
+li $a0, 1
+beq $a0,$s3, LEFTDIAGNOL
+addi $a0,5
+beq $a0,$s3, LEFTDIAGNOL        #center position tricky tricky
+addi $a0, 4
+beq $a0, $s3, LEFTDIAGNOL
+
+li $a0, 3
+beq $a0,$s3, RIGHTDIAGNOL
+addi $a0,4
+beq $a0,$s3, RIGHTDIAGNOL
+
+
+
+LEFTDIAGNOL:
+lw  $t1, 16($t0)  # middle position is now in $t1
+lw  $t2, 0($t0)  # second position is now $t2
+lw  $t3, 32($t0)  # third position is now $t3
+bne $t1,$t2,DIAGNOLNOTWONEXIT
+bne $t1,$t3,DIAGNOLNOTWONEXIT
+li $s3,1
+jr $ra
+
+RIGHTDIAGNOL:
+lw  $t1, 16($t0)  # middle position is now in $t1
+lw  $t2, 8($t0)  # second position is now $t2
+lw  $t3, 24($t0)  # third position is now $t3
+bne $t1,$t2,DIAGNOLNOTWONEXIT
+bne $t1,$t3,DIAGNOLNOTWONEXIT
+li $s3,1
+jr $ra
+
+DIAGNOLNOTWONEXIT:
+li $a0,5
+beq $s3,$a0,RIGHTDIAGNOL  # In case middle position try right diagnol
+li $s3,0
+jr $ra
+
+
 
 ### Takes the position 1 - 9, uses modulo and division 
 ### to get the row and col
