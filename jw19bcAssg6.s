@@ -8,14 +8,7 @@
 
 
     .data
-#BOARD:  .word      0, 0, 0, 1, 1, 1, 2, 2, 2
-#BOARD:  .word      0, 0, 0, 0, 0, 0, 0, 0, 0
-#BOARD:  .word      1, 1, 1, 1, 2, 1, 1, 1, 1
-#BOARD: .word        1, 2, 3, 1, 5, 6, 1, 9, 9
-#BOARD: .word        1, 2, 3, 1, 2, 3, 1, 2, 3
-#BOARD: .word 1, 2, 3, 4, 5, 6, 7, 8, 9
-BOARD: .word 1, 2, 3, 4, 1, 6, 7, 8, 1
-#BOARD: .word 1, 2, 3, 4, 3, 6, 3, 8, 9
+BOARD:  .word      2, 1, 1, 1, 2, 1, 1, 1, 2
 
 WELCOMEUSER:    .asciiz     "Welcome to Tic-Tac-Toe\nI'll go first!\n"
 ASKFORINPUT:    .asciiz     "Enter a position between 1 and 9\n"
@@ -36,6 +29,15 @@ jal     PRINTBOARD
 lw      $ra,0($sp)
 addiu   $sp,$sp,4
 
+addiu   $sp,$sp,-4
+sw      $ra,0($sp)
+jal     IMMEDIATEHUMANWIN
+lw      $ra,0($sp)
+addiu   $sp,$sp,4
+
+move    $a0,$s3
+li      $v0,1
+syscall
 
 jr		$ra					# Exit game
 
@@ -287,10 +289,172 @@ FINDHUMANMOVE:
 
 FINDCOMPUTERMOVE:
 
+### Loop through all positions, if the position is 2/Human,
+### check if the row, col, or diag is a winner. If Winner return
+### true
 IMMEDIATEHUMANWIN:
+la $t0, BOARD
+li $t1, 9
+li $t2, 0               # counter / position
+li $t3, 2               #  Human value
+IHWLOOPTOP:
+addi $t2,1              # increment counter
+beq  $t2,$t1,NOWINEXIT
+addiu   $sp,$sp,-20         #Save all these temp variables b4 jumping
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)
+move    $s3,$t2             # pass the position in $s3
+jal     GETVALFROMPOSITION  # jump to this
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+lw      $t3,16($sp)
+addiu   $sp,$sp,20
 
+move    $t4,$s3         # store the value from $s3 into $t4
+move    $s3,$t2         # store position back into $s3
+beq     $t4,$t3,CHECKIFWINNERHUMAN # if the position is human jump out
+j		IHWLOOPTOP      # check the next position
+
+##### Check if the position is a winner
+CHECKIFWINNERHUMAN:         
+addiu   $sp,$sp,-20         #Save all these temp variables b4 jumping
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)
+jal     ROWISWON  # jump to this
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+lw      $t3,16($sp)
+addiu   $sp,$sp,20
+blt     $zero,$s3,WINNEREXIT    #If row is won $s3 == 1, else 0
+
+move $s3,$t2        # load position back into $s3
+
+addiu   $sp,$sp,-20         #Save all these temp variables b4 jumping
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)
+jal     COLISWON  # jump to this
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+lw      $t3,16($sp)
+addiu   $sp,$sp,20
+blt     $zero,$s3,WINNEREXIT #If row is won $s3 == 1, else 0
+
+move $s3,$t2        # load position back into $s3
+
+addiu   $sp,$sp,-20         #Save all these temp variables b4 jumping
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)
+jal     DIAGNOLISWON  # jump to this
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+lw      $t3,16($sp)
+addiu   $sp,$sp,20
+blt     $zero,$s3,WINNEREXIT #If row is won $s3 == 1, else 0
+j		IHWLOOPTOP  # If none of these were valid jump to top
+
+WINNEREXIT:
+li      $s3,1   ### should already be a 1 in $s3 but whatever
+jr      $ra
+
+NOWINEXIT:
+li      $s3,0
+jr      $ra
+
+
+### Loop through all positions, if the position is 1/Computer,
+### check if the row, col, or diag is a winner. If Winner return
+### true
 IMMEDIATECOMPUTERWIN:
+la $t0, board
+li $t1, 9
+li $t2, 0               # counter / position
+li $t3, 1               #  COMPUTER VALUE
+ICWLOOPTOP:
+addi $t2,1              # increment counter
+beq  $t2,$t1,NOWINEXIT
+addiu   $sp,$sp,-20         #Save all these temp variables b4 jumping
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)
+move    $s3,$t2             # pass the position in $s3
+jal     GETVALFROMPOSITION  # jump to this
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+addiu   $sp,$sp,16
 
-RESTART:
+move    $t4,$s3             # the $s3 used to transport position
+move    $s3,$t2
+beq     $t4,$t3,CHECKIFWINNERHUMANCOMP  # IF COMP CHECK IF COMP WINNER
 
-INITIALIZE:
+
+CHECKIFWINNERHUMANCOMP:         
+addiu   $sp,$sp,-20         #Save all these temp variables b4 jumping
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)
+jal     ROWISWON  # jump to this
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+addiu   $sp,$sp,16
+blt     $zero,$s3,WINNEREXIT
+
+move $s3,$t2        # load position back into $s3
+
+addiu   $sp,$sp,-20         #Save all these temp variables b4 jumping
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)
+jal     COLISWON  # jump to this
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+addiu   $sp,$sp,16
+blt     $zero,$s3,WINNEREXIT
+
+move $s3,$t2        # load position back into $s3
+
+addiu   $sp,$sp,-20         #Save all these temp variables b4 jumping
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)
+jal     DIAGNOLISWON  # jump to this
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+addiu   $sp,$sp,16
+blt     $zero,$s3,WINNEREXIT
+j		ICWLOOPTOP     
