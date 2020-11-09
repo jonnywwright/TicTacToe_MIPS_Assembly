@@ -2,19 +2,16 @@
 # Name:  Jonathan Wright                                           #
 # Class: CDA3100                                                   #
 # Assignment: 5                                                    #
-# Description: This program will prompt the user to enter a list   #
-# of integer values, one per line, and will stop once the user has #
-# entered in a negative value. The negative value is a stop flag,  #
-# not apart of any calculations. This program will print  print    # 
-# the (1) sum, (2) minimum value, (3) maximum value, (4) mean, and #
-# (5) variance.                                                    #
+# Description: This is a Tic-Tac-Toe game that uses the minmax     #
+# algorithm to play Tic-Tac-Toe perfectly.                         #
 # ##################################################################
 
 
     .data
 #BOARD:  .word      0, 0, 0, 1, 1, 1, 2, 2, 2
 #BOARD:  .word      0, 0, 0, 0, 0, 0, 0, 0, 0
-BOARD:  .word      1, 1, 1, 1, 1, 1, 1, 1, 0
+#BOARD:  .word      1, 1, 1, 1, 2, 1, 1, 1, 1
+BOARD: .word        1, 2, 3, 4, 5, 6, 9, 9, 9
 
 WELCOMEUSER:    .asciiz     "Welcome to Tic-Tac-Toe\nI'll go first!\n"
 ASKFORINPUT:    .asciiz     "Enter a position between 1 and 9\n"
@@ -36,7 +33,38 @@ lw      $ra,0($sp)
 addiu   $sp,$sp,4
 
 
+li $s3, 7
+addiu   $sp,$sp,-4
+sw      $ra,0($sp)
+jal     ROWISWON
+lw      $ra,0($sp)
+addiu   $sp,$sp,4
+move $a0, $s3
+li $v0,1
+syscall
 
+lb  $a0,EOL         # Print a new line
+li  $v0,11          
+syscall
+
+
+jr  $ra
+
+
+
+
+
+
+
+# li $s3, 8
+# addiu   $sp,$sp,-4
+# sw      $ra,0($sp)
+# jal     ROWISWON
+# lw      $ra,0($sp)
+# addiu   $sp,$sp,4
+# move $a0, $s3
+# li $v0,1
+# syscall
 
 
 
@@ -144,15 +172,8 @@ syscall
 jr  $ra
 
 
-### DETERMINES IF LOCATION IS AVAILABLE
-CHECKAVAILABLITY: 
-
-### INSERTS THE VALUE INTO THE BOARD
-UPDATEBOARD:
-
 
 ### CHECKS IF BOARD IS FULL
-
 ### Places a 0 in $s3 if not full
 ### Places a 1 in $s3 if it is full
 ### A board is full if it has no zeroes
@@ -195,13 +216,40 @@ jr  $ra
 ### DETERMINES IF WIN, LOSS OR DRAW
 GETSCORE:
 
-### CHECKS IF ROW AT POSITION IS WON
+### CHECKS IF ROW AT POSITION IS WON BY ANY PLAYER
+### Position is passed in via $s3
 ROWISWON:
+la $t0,BOARD
+addi $s3, -1    #decrement position by one because zero indexing is awesome
+li   $a0, 3
+div  $s3,$a0    #quot in Lo
+mflo $a2        #quot now in $a2
+mult $a0,$a2    #zero indexed row now stored in $lo
+mflo $a0        # move back into $a0
+li $a1, 4       # byte offset size
+mult $a0, $a1   #mult by the byte offset size
+mflo $a0        #move total offset into $a0
+add  $t0,$t0,$a0 #t0 now indexed at the start of row
 
-### CHECKS IF COL AT POSITION IS WON
+lw  $t1, 0($t0)  # first position is now $t1
+lw  $t2, 4($t0)  # second position is now $t2
+lw  $t3, 8($t0)  # third position is now $t3
+bne $t1,$t2,NOTWONEXIT
+bne $t1,$t3,NOTWONEXIT
+li  $s3,1    # a 1 means the row is won
+jr  $ra
+
+NOTWONEXIT:
+li $v0,1
+li $a0, 9
+syscall
+li $s3,0
+jr  $ra
+
+### CHECKS IF COL AT POSITION IS WON BY ANY PLAYER
 COLISWON:
 
-### CHECKS IF DIAGNOL AT POSITION IS WON
+### CHECKS IF DIAGNOL AT POSITION IS WON BY ANY PLAYER
 DIAGNOLISWON:
 
 ### Takes the position 1 - 9, uses modulo and division 
