@@ -51,9 +51,27 @@ jal     GETVALFROMPOSITION ### Passing position in $s3
 lw      $ra,0($sp)
 addiu   $sp,$sp,4
 
+
 li  $v0,1                  # Print the input from the print input function
 move  $a0,$s3
 syscall
+
+############################################# setting value test
+li      $s3,9
+li      $s4,9
+addiu   $sp,$sp,-4
+sw      $ra,0($sp)
+jal     SETVALFROMPOSITION ### Passing position in $s3
+lw      $ra,0($sp)
+addiu   $sp,$sp,4
+
+addiu   $sp,$sp,-4
+sw      $ra,0($sp)
+jal     PRINTBOARD
+lw      $ra,0($sp)
+addiu   $sp,$sp,4
+
+
 ################ This block is just here for testing
 
  #li      $v0,4               #Ready the printer    
@@ -144,6 +162,8 @@ DIAGNOLISWON:
 ### Takes the position 1 - 9, uses modulo and division 
 ### to get the row and col
 ### Assumes position is stored in $s3
+### Obviosly this could be much shorter since this is not
+### a real 2d array like C++ but this is to show I can
 GETVALFROMPOSITION:
 la $t0,BOARD
 addi $s3, -1    #decrement position by one because zero indexing is awesome
@@ -163,6 +183,18 @@ jr  $ra
 
 
 SETVALFROMPOSITION:
+### Assume position is passed in via $s3, value $s4
+### Takes the position 1 - 9, subtracts 1 and mult by 4 for the 
+### index. This doesn't treat BOARD as a 2D array. For that please
+### see GETVALUEFROMPOSITION
+la $t0,BOARD
+addi $s3,-1     # decrement position for zero-indexing
+li $t1,4        # load byte size into $t1
+mult $t1,$s3    # mult the zero-indexed by byte size for correct offset
+mflo $t1        # store the product into $t1
+add $t0,$t0,$t1 # add the offset to $t0
+sw  $s4, 0($t0) # update the value in the array
+jr $ra          # jump back
 
 FINDHUMANMOVE:
 
