@@ -12,7 +12,7 @@
 
 
     .data
-ARRAY:  .space      36
+BOARD:  .word      0, 0, 0, 1, 1, 1, 2, 2, 2
 WELCOMEUSER:    .asciiz     "Welcome to Tic-Tac-Toe\nI'll go first!\n"
 ASKFORINPUT:    .asciiz     "Enter a position between 1 and 9\n"
 EOL:    .byte       '\n'
@@ -25,19 +25,29 @@ li      $v0,4               #Ready the printer
 la      $a0,WELCOMEUSER     #Load the welcome message
 syscall                     #Print the welcome message
 
+
+addiu   $sp,$sp,-4
+sw      $ra,0($sp)
+jal     PRINTBOARD
+lw      $ra,0($sp)
+addiu   $sp,$sp,4
+
+
 addiu   $sp,$sp,-4
 sw      $ra,0($sp)
 jal     GETINPUT
 lw      $ra,0($sp)
 addiu   $sp,$sp,4
 
-li  $v0,1
+li  $v0,1                  # Print the input from the print input function
 move  $a0,$s0
-syscall
 
-# li      $v0,4               #Ready the printer
+
+################ This block is just here for testing
+
+ #li      $v0,4               #Ready the printer    
 # la      $a0,WELCOMEUSER     #Load the welcome message
-# syscall                     #Print the welcome message
+#syscall                     #Print the welcome message
 jr		$ra					# Exit game
 
 
@@ -64,5 +74,74 @@ beq $a0,$zero,EVALUATEINPUT #if v0 > 9 go ask for new input
 move $s0, $v0		    # Save the valid user input into $s0
 jr		$ra					# jump to $ra
 
+### PRINTS THE CURRENT GAMEBOARD TO THE CONSOLE
+PRINTBOARD:
+la $t0,BOARD
+li $t1, 3           # range for inner and outer loops
+li $t2,0            # outer loop counter
 
 
+OuterLoop:
+beq $t2,$t1, EXPRINTBOARD    #exit printboard after done printing
+li $t3,0            # inner loop counter
+addiu $t2,1         # increment outer loop counter
+
+lb  $a0,EOL         # Print a new line
+li  $v0,11          
+syscall
+
+InnerLoop:
+
+beq $t3,$t1,OuterLoop #jump out to outer when done
+addiu   $t3, 1      # incrememnt inner loop counter
+
+li  $v0,1           # Print the data
+lw  $a0, 0($t0)
+syscall
+addiu $t0,4         # increment address of t0 for the next print
+j InnerLoop        
+
+EXPRINTBOARD:
+lb  $a0,EOL         # Print a new line
+li  $v0,11          
+syscall
+jr  $ra
+
+
+### DETERMINES IF LOCATION IS AVAILABLE
+CHECKAVAILABLITY: 
+
+### INSERTS THE VALUE INTO THE BOARD
+UPDATEBOARD:
+
+
+### CHECKS IF BOARD IS FULL
+ISBOARDFULL:
+
+### DETERMINES IF WIN, LOSS OR DRAW
+GETSCORE:
+
+### CHECKS IF ROW AT POSITION IS WON
+ROWISWON:
+
+### CHECKS IF COL AT POSITION IS WON
+COLISWON:
+
+### CHECKS IF DIAGNOL AT POSITION IS WON
+DIAGNOLISWON:
+
+GETVALFROMPOSITION:
+
+SETVALFROMPOSITION:
+
+FINDHUMANMOVE:
+
+FINDCOMPUTERMOVE:
+
+IMMEDIATEHUMANWIN:
+
+IMMEDIATECOMPUTERWIN:
+
+RESTART:
+
+INITIALIZE:
