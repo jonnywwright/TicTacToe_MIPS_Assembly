@@ -41,6 +41,31 @@ syscall
 
 jr		$ra					# Exit game
 
+###############################################
+###############################################
+###############################################
+FINDBESTCOMPUTERMOVE:
+### t0 holds value
+addiu   $sp,$sp,-4
+sw      $ra,0($sp)
+jal     ISBOARDFULL
+lw      $ra,0($sp)
+addiu   $sp,$sp,4
+jlt     $zero,$s3,$RETURNDRAW   #if board is full t0 == 1
+li      $s6, -10
+li      $s7, 1          # best move == 1
+#### leaving off here
+
+RETURNDRAW
+li $s6,0        #s7 holds the draw value
+jr  $ra         #return out
+
+
+FINDBESTHUMANMOVE:
+
+
+
+
 #### Input saved in $s0
 GETINPUT:
 addiu   $sp,$sp,-4
@@ -71,18 +96,15 @@ la $t0,BOARD
 li $t1, 3           # range for inner and outer loops
 li $t2,0            # outer loop counter
 
-
 OuterLoop:
 beq $t2,$t1, EXPRINTBOARD    #exit printboard after done printing
 li $t3,0            # inner loop counter
 addiu $t2,1         # increment outer loop counter
-
 lb  $a0,EOL         # Print a new line
 li  $v0,11          
 syscall
 
 InnerLoop:
-
 beq $t3,$t1,OuterLoop #jump out to outer when done
 addiu   $t3, 1      # incrememnt inner loop counter
 
@@ -97,8 +119,6 @@ lb  $a0,EOL         # Print a new line
 li  $v0,11          
 syscall
 jr  $ra
-
-
 
 ### CHECKS IF BOARD IS FULL
 ### Places a 0 in $s3 if not full
@@ -284,10 +304,6 @@ mflo $t1        # store the product into $t1
 add $t0,$t0,$t1 # add the offset to $t0
 sw  $s4, 0($t0) # update the value in the array
 jr $ra          # jump back
-
-FINDHUMANMOVE:
-
-FINDCOMPUTERMOVE:
 
 ### Loop through all positions, if the position is 2/Human,
 ### check if the row, col, or diag is a winner. If Winner return
