@@ -12,7 +12,10 @@
 
 
     .data
-BOARD:  .word      0, 0, 0, 1, 1, 1, 2, 2, 2
+#BOARD:  .word      0, 0, 0, 1, 1, 1, 2, 2, 2
+#BOARD:  .word      0, 0, 0, 0, 0, 0, 0, 0, 0
+BOARD:  .word      1, 1, 1, 1, 1, 1, 1, 1, 0
+
 WELCOMEUSER:    .asciiz     "Welcome to Tic-Tac-Toe\nI'll go first!\n"
 ASKFORINPUT:    .asciiz     "Enter a position between 1 and 9\n"
 EOL:    .byte       '\n'
@@ -33,43 +36,47 @@ lw      $ra,0($sp)
 addiu   $sp,$sp,4
 
 
-addiu   $sp,$sp,-4
-sw      $ra,0($sp)
-jal     GETINPUT ### Saving input to $s0
-lw      $ra,0($sp)
-addiu   $sp,$sp,4
-
-li  $v0,1                  # Print the input from the print input function
-move  $a0,$s0
-syscall
-
-move $s3,$s0
-
-addiu   $sp,$sp,-4
-sw      $ra,0($sp)
-jal     GETVALFROMPOSITION ### Passing position in $s3
-lw      $ra,0($sp)
-addiu   $sp,$sp,4
 
 
-li  $v0,1                  # Print the input from the print input function
-move  $a0,$s3
-syscall
+
+
+# addiu   $sp,$sp,-4
+# sw      $ra,0($sp)
+# jal     GETINPUT ### Saving input to $s0
+# lw      $ra,0($sp)
+# addiu   $sp,$sp,4
+
+# li  $v0,1                  # Print the input from the print input function
+# move  $a0,$s0
+# syscall
+
+# move $s3,$s0
+
+# addiu   $sp,$sp,-4
+# sw      $ra,0($sp)
+# jal     GETVALFROMPOSITION ### Passing position in $s3
+# lw      $ra,0($sp)
+# addiu   $sp,$sp,4
+
+
+# li  $v0,1                  # Print the input from the print input function
+# move  $a0,$s3
+# syscall
 
 ############################################# setting value test
-li      $s3,9
-li      $s4,9
-addiu   $sp,$sp,-4
-sw      $ra,0($sp)
-jal     SETVALFROMPOSITION ### Passing position in $s3
-lw      $ra,0($sp)
-addiu   $sp,$sp,4
+# li      $s3,9
+# li      $s4,9
+# addiu   $sp,$sp,-4
+# sw      $ra,0($sp)
+# jal     SETVALFROMPOSITION ### Passing position in $s3
+# lw      $ra,0($sp)
+# addiu   $sp,$sp,4
 
-addiu   $sp,$sp,-4
-sw      $ra,0($sp)
-jal     PRINTBOARD
-lw      $ra,0($sp)
-addiu   $sp,$sp,4
+# addiu   $sp,$sp,-4
+# sw      $ra,0($sp)
+# jal     PRINTBOARD
+# lw      $ra,0($sp)
+# addiu   $sp,$sp,4
 
 
 ################ This block is just here for testing
@@ -145,7 +152,45 @@ UPDATEBOARD:
 
 
 ### CHECKS IF BOARD IS FULL
+
+### Places a 0 in $s3 if not full
+### Places a 1 in $s3 if it is full
+### A board is full if it has no zeroes
 ISBOARDFULL:
+li $t0,0        # counter
+li $t1,9        # max range not inclusive
+li $t2,1        # position
+ISBOARDFULLLOOP:
+beq     $t0,$t1,FULLEXIT            
+addiu   $sp,$sp,-16         #Save all these temp variables b4 jumping
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+move    $s3,$t2             # pass the position in $s3
+jal     GETVALFROMPOSITION  # jump to this
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+addiu   $sp,$sp,16
+### the value is now stored in $s3, lets check it
+beq $s3,$zero,NOTFULLEXIT
+addi $t0,1      # increment counter
+addi $t2,1      # increment position
+
+move $a0,$t0
+li	 $v0,1
+syscall
+
+j   ISBOARDFULLLOOP # jump to top of the loop
+
+FULLEXIT:
+li  $s3, 1  ### the board is full
+jr  $ra
+NOTFULLEXIT:
+li  $s3, 0  ### the board is not full
+jr  $ra
 
 ### DETERMINES IF WIN, LOSS OR DRAW
 GETSCORE:
