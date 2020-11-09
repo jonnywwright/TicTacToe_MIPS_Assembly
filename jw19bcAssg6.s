@@ -45,19 +45,82 @@ jr		$ra					# Exit game
 ###############################################
 ###############################################
 FINDBESTCOMPUTERMOVE:
-### t0 holds value
+##### check if board is full, if it is return draw
 addiu   $sp,$sp,-4
 sw      $ra,0($sp)
 jal     ISBOARDFULL
 lw      $ra,0($sp)
 addiu   $sp,$sp,4
-jlt     $zero,$s3,$RETURNDRAW   #if board is full t0 == 1
+jlt     $zero,$s3,RETURNDRAW   #if board is full t0 == 1
 li      $s6, -10
-li      $s7, 1          # best move == 1
-#### leaving off here
+##### check if immediate comp win, return if true
+addiu   $sp,$sp,-4
+sw      $ra,0($sp)
+jal     IMMEDIATECOMPUTERWIN
+lw      $ra,0($sp)
+addiu   $sp,$sp,4
+jlt     $zero,$s3,RETURNCOMPWIN   #if board is full t0 == 1
 
-RETURNDRAW
-li $s6,0        #s7 holds the draw value
+###### else value == comploss
+###### prepare for some deep recursion
+li      $s7, 1          # best move = 1
+li      $3,-10         # store COMPLOSS in $t3
+li      $t1, 9               # max range not inclusive
+li      $t2, 0               # counter / position
+FBCMLOOPTOP:
+addi    $t2,1              # increment counter
+move    $s3,$t2            # store the position in $s3
+addiu   $sp,$sp,-20
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)
+jal     GETVALUEFROMPOSITION
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+lw      $t3,16($sp)
+addiu   $sp,$sp,20
+li      $s4,1                   # store computer value $s4
+beq     $a0,$s3,VISITPOSITION
+
+VISITPOSITION:
+addiu   $sp,$sp,-20
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)
+jal     SETVALFROMPOSITION      ### THIS IS THE SET
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+lw      $t3,16($sp)
+addiu   $sp,$sp,20
+## FIND HUMAN MOVE
+addiu   $sp,$sp,-20
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)
+jal     SETVALFROMPOSITION      ### THIS IS THE UNSET
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+lw      $t3,16($sp)
+addiu   $sp,$sp,20
+
+RETURNDRAW:
+li $s6,0        #s7 holds the DRAW val
+jr  $ra         #return out
+
+RETURNCOMPWIN:
+li $s6,10        #s6 holds the COMPWIN val
 jr  $ra         #return out
 
 
@@ -395,7 +458,6 @@ jr      $ra
 NOWINEXIT:
 li      $s3,0
 jr      $ra
-
 
 ### Loop through all positions, if the position is 1/Computer,
 ### check if the row, col, or diag is a winner. If Winner return
