@@ -15,7 +15,7 @@
 # 2 2 0
 ### computer goes first always position 1
 ### therefore player gets to make 4 moves
-BOARD:  .word      0, 0, 0, 0, 0, 0, 0, 0, 0
+BOARD:  .word      1, 0, 0, 0, 0, 0, 0, 0, 0
 
 
 
@@ -34,7 +34,7 @@ la      $a0,WELCOMEUSER     	# Load the welcome message
 syscall                     	# Print the welcome message
 
 li      $t0,0                   # turn counter
-li      $t1,6                   # max player turns
+li      $t1,9                   # max player turns
 GAMELOOP:
 addi    $t0,1                   # increment turn counter
 beq     $t0,$t1,ENDGAME         #when turns are up end game
@@ -90,6 +90,17 @@ lw      $ra,0($sp)
 lw      $t0,4($sp)
 lw      $t1,8($sp)
 addiu   $sp,$sp,12
+
+
+lb  	$a0,EOL         	# Print a new line
+li  	$v0,11          
+syscall
+move    $a0,$s7
+li      $v0,1
+syscall
+lb  	$a0,EOL         	# Print a new line
+li  	$v0,11          
+syscall
 
 move    $s3,$s7         # move the computer position to $s3
 li      $s4,1           # computer player value
@@ -355,9 +366,10 @@ la      $a0,ASKFORINPUT 	# Load ask user for input message
 syscall                 	# Ask the user for input
 li  	$v0,5               	# Ready the integer reader
 syscall                 	# Read the integer
-slt 	$a0,$v0,$zero        	# if $v0 < $zero store a 1 in $a0
+li      $a1,1                   # Min val
+slt 	$a0,$v0,$a1        	# if $v0 < $zero store a 1 in $a0
 bne 	$a0,$zero,EVALUATEINPUT # if invalid input prompt again
-li  	$a1,9               	# Store the upper bounds non inclusive
+li  	$a1,10               	# Store the upper bounds non inclusive
 slt 	$a0,$v0,$a1         	# if $v0 < 9 store a 1 in $a0
 beq 	$a0,$zero,EVALUATEINPUT # if v0 > 9 go ask for new input
 move 	$s0, $v0		    # Save the valid user input into $s0
