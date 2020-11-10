@@ -1,46 +1,25 @@
 # ##################################################################
 # Name:  Jonathan Wright                                           #
 # Class: CDA3100                                                   #
-# Assignment: 5                                                    #
+# Assignment: 6                                                    #
 # Description: This is a Tic-Tac-Toe game that uses the minmax     #
 # algorithm to play Tic-Tac-Toe perfectly.                         #
+# Source of Algorithm: Mark Weiss Data Structures and Analysis     #
 # ##################################################################
 
 
     .data
 
 BOARD:  .word     1, 0, 0, 0, 0, 0, 0, 0, 0
-# 1 2 2
-# 1 1 2
-# 2 2 0
-### computer goes first always position 1
-### therefore player gets to make 4 moves
-#BOARD:  .word      0, 1, 1, 0, 0, 0, 0, 0, 0
-
-
-
-
-WELCOMEUSER:    .asciiz     "Welcome to Tic-Tac-Toe\nYou go first!\n"
+WELCOMEUSER:    .asciiz     "Welcome to Tic-Tac-Toe\nI'm X and you're O.\nI'll go first!\n"
 ASKFORINPUT:    .asciiz     "Enter a position between 1 and 9\n"
+X:      .byte       'X'
+O:      .byte       'O'
 EOL:    .byte       '\n'
     .text
     .globl main
 main:
 
-
-# li      $s3,3
-# addiu   $sp,$sp,-4
-# sw      $ra,0($sp)
-# jal     IMMEDIATEHUMANWIN
-# lw      $ra,0($sp)
-# addiu   $sp,$sp,12
-
-
-# li        $v0,1
-# move      $a0,$s3
-# syscall
-
-# jr      $ra
 
 LOADGAME:
 li      $s7,1                   # Set up an initial val for best move
