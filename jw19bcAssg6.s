@@ -9,13 +9,13 @@
 
     .data
 
-#BOARD:  .word      1, 2, 2, 1, 1, 2, 2, 2, 0
+BOARD:  .word     1, 0, 0, 0, 0, 0, 0, 0, 0
 # 1 2 2
 # 1 1 2
 # 2 2 0
 ### computer goes first always position 1
 ### therefore player gets to make 4 moves
-BOARD:  .word      1, 0, 0, 0, 0, 0, 0, 0, 0
+#BOARD:  .word      0, 1, 1, 0, 0, 0, 0, 0, 0
 
 
 
@@ -27,8 +27,23 @@ EOL:    .byte       '\n'
     .globl main
 main:
 
-##### GET USER VALUES
+
+# li      $s3,3
+# addiu   $sp,$sp,-4
+# sw      $ra,0($sp)
+# jal     IMMEDIATEHUMANWIN
+# lw      $ra,0($sp)
+# addiu   $sp,$sp,12
+
+
+# li        $v0,1
+# move      $a0,$s3
+# syscall
+
+# jr      $ra
+
 LOADGAME:
+li      $s7,1                   # Set up an initial val for best move
 li      $v0,4               	# Ready the printer
 la      $a0,WELCOMEUSER     	# Load the welcome message
 syscall                     	# Print the welcome message
@@ -140,7 +155,7 @@ addiu   $sp,$sp,4
 blt     $zero,$s3,RETURNCOMPWIN # if immiediatecompwin RETURNCOMPWIN
 
 
-li      $s7, 1          	# assert best move = 1 
+#li      $s7, 1          	# assert best move = 1 
 li      $t0, 9               	# max range not inclusive
 li      $t1, 0               	# counter and position
 li      $t2,-10         	# store COMPLOSS in $t2
@@ -182,17 +197,19 @@ addiu   $sp,$sp,16
 
 # FIND HUMAN RESPONSE VALUE 
 # li      $s4,1                   #     WHY IS THIS HERE?
-addiu   $sp,$sp,-16
+addiu   $sp,$sp,-20
 sw      $ra,0($sp)
 sw      $t0,4($sp)
 sw      $t1,8($sp)
 sw      $t2,12($sp)
+sw      $s7,16($sp)             ### since the findbesthumanmove takes a dc arg
 jal     FINDBESTHUMANMOVE      # 
 lw      $ra,0($sp)
 lw      $t0,4($sp)
 lw      $t1,8($sp)
 lw      $t2,12($sp)
-addiu   $sp,$sp,16
+lw      $s7,16($sp) 
+addiu   $sp,$sp,20
 move    $t3,$s6                # save return val from FINDBESTHUMANMOVE
 
 move    $s3,$t1                 # save position into $s3
@@ -258,7 +275,7 @@ addiu   $sp,$sp,4
 blt     $zero,$s3,RETURNHUMANWIN # if IMMEDIATEHUMANWIN RETURNHUMANWIN
 
 
-li      $s7,1           	# assert best move = 1 
+#li      $s7,1           	# assert best move = 1 
 li      $t0,9               	# max range not inclusive
 li      $t1,0               	# counter and position
 li      $t2,10         	        # store HUMANLOSS in $t2
@@ -303,17 +320,19 @@ addiu   $sp,$sp,16
 
 # FIND COMPUTER RESPONSE VALUE 
 #li      $s4,1                   # WHY IS THIS HERE?
-addiu   $sp,$sp,-16
+addiu   $sp,$sp,-20
 sw      $ra,0($sp)
 sw      $t0,4($sp)
 sw      $t1,8($sp)
 sw      $t2,12($sp)
+sw      $s7,16($sp)
 jal     FINDBESTCOMPUTERMOVE      # 
 lw      $ra,0($sp)
 lw      $t0,4($sp)
 lw      $t1,8($sp)
 lw      $t2,12($sp)
-addiu   $sp,$sp,16
+lw      $s7,16($sp)
+addiu   $sp,$sp,20
 move    $t3,$s6                # save return val from FINDBESTCOMPUTERMOVE
 
 move    $s3,$t1                 # save position into $s3
@@ -503,12 +522,25 @@ jr  	$ra
 DIAGNOLISWON:
 # 2, 4, 6, 8 are all not compatible with diagnols, all r even
 # if even number kick out to not win exit
-li 	$t0,2   		# store 2 in $t0
+move    $t1,$s3         # save position in $t1
+li 	    $t0,2   		# store 2 in $t0
 div 	$s3,$t0
 mfhi 	$a0    			# put the remainder in $a0
 beq 	$zero,$a0,RDIAGNOWINEXIT
 la   	$t0,BOARD
 
+addiu   $sp,$sp,-12        
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+jal     GETVALFROMPOSITION      ### GOTTA MAKE SURE IT'S NOT ZERO
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+addiu   $sp,$sp,12
+
+beq 	$zero,$s3,RDIAGNOWINEXIT
+move    $s3,$t1                 # restore $s3 
 
 li 	$a0,1
 beq 	$a0,$s3, LEFTDIAGNOL
