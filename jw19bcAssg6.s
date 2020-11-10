@@ -8,37 +8,103 @@
 
 
     .data
-BOARD:  .word      2, 2, 1, 2, 1, 2, 1, 2, 2
 
-WELCOMEUSER:    .asciiz     "Welcome to Tic-Tac-Toe\nI'll go first!\n"
+#BOARD:  .word      1, 2, 2, 1, 1, 2, 2, 2, 0
+# 1 2 2
+# 1 1 2
+# 2 2 0
+### computer goes first always position 1
+### therefore player gets to make 4 moves
+BOARD:  .word      0, 0, 0, 0, 0, 0, 0, 0, 0
+
+
+
+
+WELCOMEUSER:    .asciiz     "Welcome to Tic-Tac-Toe\nYou go first!\n"
 ASKFORINPUT:    .asciiz     "Enter a position between 1 and 9\n"
 EOL:    .byte       '\n'
     .text
     .globl main
 main:
 
-###### GET USER VALUES
+##### GET USER VALUES
+LOADGAME:
 li      $v0,4               	# Ready the printer
 la      $a0,WELCOMEUSER     	# Load the welcome message
 syscall                     	# Print the welcome message
 
+li      $t0,0                   # turn counter
+li      $t1,6                   # max player turns
+GAMELOOP:
+addi    $t0,1                   # increment turn counter
+beq     $t0,$t1,ENDGAME         #when turns are up end game
 
-addiu   $sp,$sp,-4
+addiu   $sp,$sp,-12
 sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
 jal     PRINTBOARD
 lw      $ra,0($sp)
-addiu   $sp,$sp,4
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+addiu   $sp,$sp,12
 
-addiu   $sp,$sp,-4
+addiu   $sp,$sp,-12
 sw      $ra,0($sp)
-jal     IMMEDIATECOMPUTERWIN
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+jal     GETINPUT
 lw      $ra,0($sp)
-addiu   $sp,$sp,4
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+addiu   $sp,$sp,12
 
-move    $a0,$s3
-li      $v0,1
-syscall
+move    $s3,$s0         # move the validated position to $s3
+li      $s4,2           # player value
+addiu   $sp,$sp,-12
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+jal     SETVALFROMPOSITION
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+addiu   $sp,$sp,12
 
+addiu   $sp,$sp,-12
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+jal     PRINTBOARD
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+addiu   $sp,$sp,12
+
+addiu   $sp,$sp,-12
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+jal     FINDBESTCOMPUTERMOVE
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+addiu   $sp,$sp,12
+
+move    $s3,$s7         # move the computer position to $s3
+li      $s4,1           # computer player value
+addiu   $sp,$sp,-12
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+jal     SETVALFROMPOSITION
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+addiu   $sp,$sp,12
+j       GAMELOOP
+
+ENDGAME:
 jr	$ra			# Exit game
 
 
@@ -76,7 +142,7 @@ sw      $ra,0($sp)
 sw      $t0,4($sp)
 sw      $t1,8($sp)
 sw      $t2,12($sp)
-jal     GETVALUEFROMPOSITION
+jal     GETVALFROMPOSITION
 lw      $ra,0($sp)
 lw      $t0,4($sp)
 lw      $t1,8($sp)
@@ -104,7 +170,7 @@ addiu   $sp,$sp,16
 
 
 # FIND HUMAN RESPONSE VALUE 
-li      $s4,1                   # 
+# li      $s4,1                   #     WHY IS THIS HERE?
 addiu   $sp,$sp,-16
 sw      $ra,0($sp)
 sw      $t0,4($sp)
@@ -140,13 +206,14 @@ jr      FBCMLOOPTOP
 
 
 RETURNDRAW:
-li 	$s6,0        		# s7 holds the DRAW val
+li 	$s6,0        		# s6 holds the DRAW val
 jr  	$ra         		# return out
 
 RETURNCOMPWIN:
 li 	$s6,10        		# s6 holds the COMPWIN val
 jr  	$ra         		# return out
 RETURNVALUE:
+move    $s6,$t2
 jr      $ra                     # whatever in value $s6 return it
 
 
@@ -177,15 +244,18 @@ sw      $ra,0($sp)
 jal     IMMEDIATEHUMANWIN    # if immediatecompwin $s3 = 1, else $s3 = 0
 lw      $ra,0($sp)
 addiu   $sp,$sp,4
-blt     $zero,$s3,RETURNHUMANWIN # if immiediatecompwin RETURNCOMPWIN
+blt     $zero,$s3,RETURNHUMANWIN # if IMMEDIATEHUMANWIN RETURNHUMANWIN
 
 
 li      $s7,1           	# assert best move = 1 
 li      $t0,9               	# max range not inclusive
 li      $t1,0               	# counter and position
-li      $t2,10         	        # store COMPLOSS in $t2
-FBCMLOOPTOP:       
-beq     $t0,$t1,RETURNVALUE     # exit loop and return value             
+li      $t2,10         	        # store HUMANLOSS in $t2
+FBHMLOOPTOP:       
+
+
+
+beq     $t0,$t1,RETURNVALUE     # exit loop and return value           
 addi    $t1,1              	# increment, now it has correct indexing
 move    $s3,$t1            	# save position in $s3 for arg passing
 addiu   $sp,$sp,-16             
@@ -193,7 +263,7 @@ sw      $ra,0($sp)
 sw      $t0,4($sp)
 sw      $t1,8($sp)
 sw      $t2,12($sp)
-jal     GETVALUEFROMPOSITION
+jal     GETVALFROMPOSITION
 lw      $ra,0($sp)
 lw      $t0,4($sp)
 lw      $t1,8($sp)
@@ -201,11 +271,11 @@ lw      $t2,12($sp)
 addiu   $sp,$sp,16
 move    $a0,$s3                 # save the return val to $a0
 move    $s3,$t1                 # move position back into $s3 for arg passing 
-beq     $zero,$a0,VISITPOSITION # If position is empty visit, else top of loop
-j	FBCMLOOPTOP
+beq     $zero,$a0,VISITPOSITIONH # If position is empty visit, else top of loop
+j	FBHMLOOPTOP
 
 
-VISITPOSITION:
+VISITPOSITIONH:
 li      $s4,2                   # store HUMAN value $s4
 addiu   $sp,$sp,-16
 sw      $ra,0($sp)
@@ -221,7 +291,7 @@ addiu   $sp,$sp,16
 
 
 # FIND COMPUTER RESPONSE VALUE 
-li      $s4,1                   # 
+#li      $s4,1                   # WHY IS THIS HERE?
 addiu   $sp,$sp,-16
 sw      $ra,0($sp)
 sw      $t0,4($sp)
@@ -259,9 +329,6 @@ jr      FBHMLOOPTOP
 RETURNHUMANWIN:
 li 	$s6,-10        		# s6 holds the COMPWIN val
 jr  	$ra         		# return out
-RETURNVALUE:
-jr      $ra                     # whatever in value $s6 return it
-
 
 UPDATEHUMANVALUES:
 move    $t2,$t3                 # value = response value
@@ -353,10 +420,6 @@ beq 	$s3,$zero,NOTFULLEXIT
 addi 	$t0,1      		# increment counter
 addi 	$t2,1      		# increment position
 
-move 	$a0,$t0
-li	$v0,1
-syscall
-
 j   	ISBOARDFULLLOOP 	# jump to top of the loop
 
 FULLEXIT:
@@ -431,7 +494,7 @@ DIAGNOLISWON:
 li 	$t0,2   		# store 2 in $t0
 div 	$s3,$t0
 mfhi 	$a0    			# put the remainder in $a0
-beq 	$zero,$a0,DIAGNOLNOTWONEXIT
+beq 	$zero,$a0,RDIAGNOWINEXIT
 la   	$t0,BOARD
 
 
@@ -453,8 +516,8 @@ LEFTDIAGNOL:
 lw  	$t1,16($t0)  		# middle position is now in $t1
 lw  	$t2,0($t0)  		# second position is now $t2
 lw  	$t3,32($t0)  		# third position is now $t3
-bne 	$t1,$t2,DIAGNOLNOTWONEXIT
-bne 	$t1,$t3,DIAGNOLNOTWONEXIT
+bne 	$t1,$t2,LDIAGNOWINEXIT
+bne 	$t1,$t3,LDIAGNOWINEXIT
 li 	$s3,1
 jr 	$ra
 
@@ -462,17 +525,20 @@ RIGHTDIAGNOL:
 lw  	$t1,16($t0)  		# middle position is now in $t1
 lw  	$t2,8($t0)  		# second position is now $t2
 lw  	$t3,24($t0)  		# third position is now $t3
-bne 	$t1,$t2,DIAGNOLNOTWONEXIT
-bne 	$t1,$t3,DIAGNOLNOTWONEXIT
+bne 	$t1,$t2,RDIAGNOWINEXIT
+bne 	$t1,$t3,RDIAGNOWINEXIT
 li 	$s3,1
 jr 	$ra
 
-DIAGNOLNOTWONEXIT:
+LDIAGNOWINEXIT:
 li 	$a0,5
 beq 	$s3,$a0,RIGHTDIAGNOL  	# In case middle position try right diagnol
 li 	$s3,0
 jr 	$ra
 
+RDIAGNOWINEXIT:
+li 	$s3,0
+jr 	$ra
 
 
 ### Takes the position 1 - 9, uses modulo and division 
