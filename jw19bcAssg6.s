@@ -43,79 +43,101 @@ jr	$ra			# Exit game
 
 
 
-###############################################
-###############################################
-###############################################
+################################################################################
+################################################################################
+################################################################################
 FINDBESTCOMPUTERMOVE:
 ##### check if board is full, if it is return draw
 addiu   $sp,$sp,-4
 sw      $ra,0($sp)
-jal     ISBOARDFULL
+jal     ISBOARDFULL             # if boardfull $s3 = 1, else $s3=0
 lw      $ra,0($sp)
 addiu   $sp,$sp,4
-jlt     $zero,$s3,RETURNDRAW   	# if board is full t0 == 1
-li      $s6, -10
+blt     $zero,$s3,RETURNDRAW   	# if full RETURNDRAW
 ##### check if immediate comp win, return if true
 addiu   $sp,$sp,-4
 sw      $ra,0($sp)
-jal     IMMEDIATECOMPUTERWIN
+jal     IMMEDIATECOMPUTERWIN    # if immediatecompwin $s3 = 1, else $s3 = 0
 lw      $ra,0($sp)
 addiu   $sp,$sp,4
-jlt     $zero,$s3,RETURNCOMPWIN # if board is full t0 == 1
+blt     $zero,$s3,RETURNCOMPWIN # if immiediatecompwin RETURNCOMPWIN
 
-###### else value == comploss
-###### prepare for some deep recursion
-li      $s7, 1          	# best move = 1
-li      $3,-10         		# store COMPLOSS in $t3
-li      $t1, 9               	# max range not inclusive
-li      $t2, 0               	# counter / position
-FBCMLOOPTOP:
-addi    $t2,1              	# increment counter
-move    $s3,$t2            	# store the position in $s3
-addiu   $sp,$sp,-20
+
+li      $s7, 1          	# assert best move = 1 
+li      $t0, 9               	# max range not inclusive
+li      $t1, 0               	# counter and position
+li      $t2,-10         	# store COMPLOSS in $t2
+FBCMLOOPTOP:       
+beq     $t0,$t1,RETURNVALUE     # exit loop and return value             
+addi    $t1,1              	# increment, now it has correct indexing
+move    $s3,$t1            	# save position in $s3 for arg passing
+addiu   $sp,$sp,-16             
 sw      $ra,0($sp)
 sw      $t0,4($sp)
 sw      $t1,8($sp)
 sw      $t2,12($sp)
-sw      $t3,16($sp)
 jal     GETVALUEFROMPOSITION
 lw      $ra,0($sp)
 lw      $t0,4($sp)
 lw      $t1,8($sp)
 lw      $t2,12($sp)
-lw      $t3,16($sp)
-addiu   $sp,$sp,20
-li      $s4,1                   # store computer value $s4
-beq     $a0,$s3,VISITPOSITION
+addiu   $sp,$sp,16
+move    $a0,$s3                 # save the return val to $a0
+move    $s3,$t1                 # move position back into $s3 for arg passing 
+beq     $zero,$a0,VISITPOSITION # If position is empty visit, else top of loop
+j	FBCMLOOPTOP
+
 
 VISITPOSITION:
-addiu   $sp,$sp,-20
+li      $s4,1                   # store computer value $s4
+addiu   $sp,$sp,-16
 sw      $ra,0($sp)
 sw      $t0,4($sp)
 sw      $t1,8($sp)
 sw      $t2,12($sp)
-sw      $t3,16($sp)
 jal     SETVALFROMPOSITION      # THIS IS THE SET
 lw      $ra,0($sp)
 lw      $t0,4($sp)
 lw      $t1,8($sp)
 lw      $t2,12($sp)
-lw      $t3,16($sp)
-addiu   $sp,$sp,20
-## FIND HUMAN MOVE CALLS HERE
+addiu   $sp,$sp,16
+
+
+# FIND HUMAN RESPONSE VALUE 
+li      $s4,1                   # 
+addiu   $sp,$sp,-16
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+jal     FINDBESTHUMANMOVE      # 
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+addiu   $sp,$sp,16
+move    $t3,$s6                # save return val from FINDBESTHUMANMOVE
+
+move    $s3,$t1                 # save position into $s3
+li      $s4,0                   # save value into $s4
 addiu   $sp,$sp,-20
 sw      $ra,0($sp)
 sw      $t0,4($sp)
 sw      $t1,8($sp)
 sw      $t2,12($sp)
-sw      $t3,16($sp)
+sw      $t3,16($sp)             # need extra space for responsevalue
 jal     SETVALFROMPOSITION      # THIS IS THE UNSET
 lw      $ra,0($sp)
 lw      $t0,4($sp)
 lw      $t1,8($sp)
 lw      $t2,12($sp)
-lw      $t3,16($sp)
+sw      $t3,16($sp)
 addiu   $sp,$sp,20
+
+blt     $t2,$t3,UPDATECOMPVALUES
+jr      FBCMLOOPTOP
+# If responsevalue > value, val = responsevalue, bestmove = i
+
 
 RETURNDRAW:
 li 	$s6,0        		# s7 holds the DRAW val
@@ -124,12 +146,131 @@ jr  	$ra         		# return out
 RETURNCOMPWIN:
 li 	$s6,10        		# s6 holds the COMPWIN val
 jr  	$ra         		# return out
+RETURNVALUE:
+jr      $ra                     # whatever in value $s6 return it
 
 
+UPDATECOMPVALUES:
+move    $t2,$t3                 # value = response value
+move    $s7,$t1                 # bestmove = i
+jr      FBCMLOOPTOP             # back to top of loop
+
+
+################################################################################
+################################################################################
+################################################################################
+
+################################################################################
+################################################################################
+################################################################################
 FINDBESTHUMANMOVE:
+##### check if board is full, if it is return draw
+addiu   $sp,$sp,-4
+sw      $ra,0($sp)
+jal     ISBOARDFULL             # if boardfull $s3 = 1, else $s3=0
+lw      $ra,0($sp)
+addiu   $sp,$sp,4
+blt     $zero,$s3,RETURNDRAW   	# if full RETURNDRAW
+##### check if immediate comp win, return if true
+addiu   $sp,$sp,-4
+sw      $ra,0($sp)
+jal     IMMEDIATEHUMANWIN    # if immediatecompwin $s3 = 1, else $s3 = 0
+lw      $ra,0($sp)
+addiu   $sp,$sp,4
+blt     $zero,$s3,RETURNHUMANWIN # if immiediatecompwin RETURNCOMPWIN
 
 
+li      $s7,1           	# assert best move = 1 
+li      $t0,9               	# max range not inclusive
+li      $t1,0               	# counter and position
+li      $t2,10         	        # store COMPLOSS in $t2
+FBCMLOOPTOP:       
+beq     $t0,$t1,RETURNVALUE     # exit loop and return value             
+addi    $t1,1              	# increment, now it has correct indexing
+move    $s3,$t1            	# save position in $s3 for arg passing
+addiu   $sp,$sp,-16             
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+jal     GETVALUEFROMPOSITION
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+addiu   $sp,$sp,16
+move    $a0,$s3                 # save the return val to $a0
+move    $s3,$t1                 # move position back into $s3 for arg passing 
+beq     $zero,$a0,VISITPOSITION # If position is empty visit, else top of loop
+j	FBCMLOOPTOP
 
+
+VISITPOSITION:
+li      $s4,2                   # store HUMAN value $s4
+addiu   $sp,$sp,-16
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+jal     SETVALFROMPOSITION      # THIS IS THE SET
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+addiu   $sp,$sp,16
+
+
+# FIND COMPUTER RESPONSE VALUE 
+li      $s4,1                   # 
+addiu   $sp,$sp,-16
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+jal     FINDBESTCOMPUTERMOVE      # 
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+addiu   $sp,$sp,16
+move    $t3,$s6                # save return val from FINDBESTCOMPUTERMOVE
+
+move    $s3,$t1                 # save position into $s3
+li      $s4,0                   # save value into $s4
+addiu   $sp,$sp,-20
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+sw      $t2,12($sp)
+sw      $t3,16($sp)             # need extra space for responsevalue
+jal     SETVALFROMPOSITION      # THIS IS THE UNSET
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+lw      $t2,12($sp)
+sw      $t3,16($sp)
+addiu   $sp,$sp,20
+
+blt     $t3,$t2,UPDATEHUMANVALUES
+jr      FBHMLOOPTOP
+# If responsevalue > value, val = responsevalue, bestmove = i
+
+
+RETURNHUMANWIN:
+li 	$s6,-10        		# s6 holds the COMPWIN val
+jr  	$ra         		# return out
+RETURNVALUE:
+jr      $ra                     # whatever in value $s6 return it
+
+
+UPDATEHUMANVALUES:
+move    $t2,$t3                 # value = response value
+move    $s7,$t1                 # bestmove = i
+jr      FBHMLOOPTOP             # back to top of loop
+
+################################################################################
+################################################################################
+################################################################################
 
 #### Input saved in $s0
 GETINPUT:
@@ -263,7 +404,7 @@ addi 	$s3,-1    		# decrement position for zero indexing
 li 	$a0,3
 div  	$s3,$a0    		# mod in Hi
 mfhi 	$a0        		# mod now in $a2
-li $	a1,4       		# byte offset size
+li      $a1,4       		# byte offset size
 mult 	$a0,$a1   		# mult by the byte offset size
 mflo 	$a0        		# move total offset into $a0
 add  	$t0,$t0,$a0 		# t0 now indexed at the start of row
@@ -287,14 +428,14 @@ jr  	$ra
 DIAGNOLISWON:
 # 2, 4, 6, 8 are all not compatible with diagnols, all r even
 # if even number kick out to not win exit
-li 	$t0, 2   		# store 2 in $t0
+li 	$t0,2   		# store 2 in $t0
 div 	$s3,$t0
 mfhi 	$a0    			# put the remainder in $a0
 beq 	$zero,$a0,DIAGNOLNOTWONEXIT
 la   	$t0,BOARD
 
 
-li 	$a0, 1
+li 	$a0,1
 beq 	$a0,$s3, LEFTDIAGNOL
 addi 	$a0,5
 beq 	$a0,$s3, LEFTDIAGNOL     #center position tricky tricky
@@ -318,9 +459,9 @@ li 	$s3,1
 jr 	$ra
 
 RIGHTDIAGNOL:
-lw  	$t1, 16($t0)  		# middle position is now in $t1
-lw  	$t2, 8($t0)  		# second position is now $t2
-lw  	$t3, 24($t0)  		# third position is now $t3
+lw  	$t1,16($t0)  		# middle position is now in $t1
+lw  	$t2,8($t0)  		# second position is now $t2
+lw  	$t3,24($t0)  		# third position is now $t3
 bne 	$t1,$t2,DIAGNOLNOTWONEXIT
 bne 	$t1,$t3,DIAGNOLNOTWONEXIT
 li 	$s3,1
@@ -341,19 +482,19 @@ jr 	$ra
 ### a real 2d array like C++ but this is to show I can
 GETVALFROMPOSITION:
 la $t0,BOARD
-addi 	$s3, -1    		# decrement position for zero indexing
-li   	$a0, 3				
+addi 	$s3,-1    		# decrement position for zero indexing
+li   	$a0,3				
 div  	$s3,$a0     		# modulo is in Hi quot in Lo
 mfhi 	$a1        		# modulo now in $a1
 mflo 	$a2        		# quot now in $a2
 mult 	$a0,$a2    		# zero indexed row now stored in $lo
 mflo 	$a0        		# move back into $a0
 add  	$a0,$a0, $a1   		# the column offset now added to $a0
-li 	$a1, 4       		# byte offset size
+li 	$a1,4       		# byte offset size
 mult 	$a0, $a1   		# mult by the byte offset size
 mflo 	$a0        		# move total offset into $a0
 add  	$t0,$t0,$a0 		# t0 now indexed at the correct POSITION
-lw  	$s3, 0($t0)  		# return the value back via $s3
+lw  	$s3,0($t0)  		# return the value back via $s3
 jr  	$ra
 
 
@@ -368,17 +509,17 @@ li 	$t1,4        		# load byte size into $t1
 mult 	$t1,$s3    		# mult the zero-indexed by byte size for correct offset
 mflo 	$t1        		# store the product into $t1
 add 	$t0,$t0,$t1		# add the offset to $t0
-sw  	$s4, 0($t0) 		# update the value in the array
+sw  	$s4,0($t0) 		# update the value in the array
 jr 	$ra          		# jump back
 
 ### Loop through all positions, if the position is 2/Human,
 ### check if the row, col, or diag is a winner. If Winner return
 ### true
 IMMEDIATEHUMANWIN:
-la 	$t0, BOARD
-li 	$t1, 9
-li 	$t2, 0               	# counter / position
-li 	$t3, 2               	#  Human value
+la 	$t0,BOARD
+li 	$t1,9
+li 	$t2,0               	# counter / position
+li 	$t3,2               	#  Human value
 IHWLOOPTOP:
 addi 	$t2,1              	# increment counter
 beq  	$t2,$t1,NOWINEXIT
@@ -466,10 +607,10 @@ jr      $ra
 ### check if the row, col, or diag is a winner. If Winner return
 ### true
 IMMEDIATECOMPUTERWIN:
-la 	$t0, BOARD
-li 	$t1, 9
-li 	$t2, 0               	# counter / position
-li 	$t3, 1               	# COMPUTER value
+la 	$t0,BOARD
+li 	$t1,9
+li 	$t2,0               	# counter / position
+li 	$t3,1               	# COMPUTER value
 ICWLOOPTOP:
 addi 	$t2,1              	# increment counter
 beq  	$t2,$t1,NOWINEXIT
