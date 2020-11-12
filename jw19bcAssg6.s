@@ -10,9 +10,13 @@
 
     .data
 
-BOARD:  .word     1, 0, 0, 0, 0, 0, 0, 0, 0
+BOARD:  .word     0, 0, 0, 0, 0, 0, 0, 0, 0
 WELCOMEUSER:    .asciiz     "Welcome to Tic-Tac-Toe\nI'm X and you're O.\nI'll go first!\n"
-ASKFORINPUT:    .asciiz     "Enter a position between 1 and 9\n"
+ASKFORINPUT:    .asciiz     "Choose an empty position between 1 and 9\n"
+PLAYAGAIN:       .asciiz     "To play again, enter 0"
+GAP:            .asciiz     " "
+LOSE:           .asciiz     "Sorry! You lose"
+DRAW:           .asciiz     "Well done, you didn't lose. You didn't win either!"
 X:      .byte       'X'
 O:      .byte       'O'
 EOL:    .byte       '\n'
@@ -22,13 +26,15 @@ main:
 
 
 LOADGAME:
+la      $t0,BOARD
+li      $t1,1                   # initial computer val
+sw      $t1,0($t0)              # set the initial position
 li      $s7,1                   # Set up an initial val for best move
 li      $v0,4               	# Ready the printer
 la      $a0,WELCOMEUSER     	# Load the welcome message
 syscall                     	# Print the welcome message
 
-li      $t0,0                   # turn counter
-li      $t1,9                   # max player turns
+
 GAMELOOP:
 addi    $t0,1                   # increment turn counter
 beq     $t0,$t1,ENDGAME         #when turns are up end game
@@ -42,6 +48,30 @@ lw      $ra,0($sp)
 lw      $t0,4($sp)
 lw      $t1,8($sp)
 addiu   $sp,$sp,12
+
+addiu   $sp,$sp,-12
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+jal     IMMEDIATECOMPUTERWIN
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+addiu   $sp,$sp,12
+
+blt     $zero,$s3,PRINTLOSS
+
+addiu   $sp,$sp,-12
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+jal     ISBOARDFULL
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+addiu   $sp,$sp,12
+
+blt     $zero,$s3,PRINTDRAW
 
 addiu   $sp,$sp,-12
 sw      $ra,0($sp)
@@ -79,6 +109,30 @@ addiu   $sp,$sp,-12
 sw      $ra,0($sp)
 sw      $t0,4($sp)
 sw      $t1,8($sp)
+jal     IMMEDIATECOMPUTERWIN
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+addiu   $sp,$sp,12
+
+blt     $zero,$s3,PRINTLOSS
+
+addiu   $sp,$sp,-12
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
+jal     ISBOARDFULL
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+lw      $t1,8($sp)
+addiu   $sp,$sp,12
+
+blt     $zero,$s3,PRINTDRAW
+
+addiu   $sp,$sp,-12
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+sw      $t1,8($sp)
 jal     FINDBESTCOMPUTERMOVE
 lw      $ra,0($sp)
 lw      $t0,4($sp)
@@ -107,12 +161,42 @@ lw      $ra,0($sp)
 lw      $t0,4($sp)
 lw      $t1,8($sp)
 addiu   $sp,$sp,12
+
+
+
 j       GAMELOOP
 
 ENDGAME:
+li  $v0,4       
+la  $a0,PLAYAGAIN
+syscall
+li  	$v0,5               # Ready the integer reader
+syscall                 	# Read the integer
+beq $zero,$v0,RESETBOARD
 jr	$ra			# Exit game
 
+PRINTDRAW:
+li  $v0,4
+la  $a0,DRAW
+syscall
+j ENDGAME
 
+PRINTLOSS:
+li  $v0,4
+la  $a0,LOSE
+syscall
+j ENDGAME
+
+RESETBOARD:
+la      $t0,BOARD
+li      $t1,9
+li      $t2,0          # counter
+RESETTOP:
+beq     $t1,$t2,LOADGAME
+sw  	$zero,0($t0)
+addi    $t0,4          # byte size
+addi    $t2,1          # increment counter
+j		RESETTOP				# jump to target
 
 ################################################################################
 ################################################################################
@@ -370,7 +454,19 @@ bne 	$a0,$zero,EVALUATEINPUT # if invalid input prompt again
 li  	$a1,10               	# Store the upper bounds non inclusive
 slt 	$a0,$v0,$a1         	# if $v0 < 9 store a 1 in $a0
 beq 	$a0,$zero,EVALUATEINPUT # if v0 > 9 go ask for new input
-move 	$s0, $v0		    # Save the valid user input into $s0
+
+move    $t0,$v0             # now we check if the position is taken
+move    $s3,$v0             # move to s3 to pass arg
+addiu   $sp,$sp,-8
+sw      $ra,0($sp)
+sw      $t0,4($sp)
+jal     GETVALFROMPOSITION		# Jump to the validate input method
+lw      $ra,0($sp)
+lw      $t0,4($sp)
+addiu   $sp,$sp,8
+bne     $s3,$zero,EVALUATEINPUT
+
+move 	$s0, $t0		    # Save the valid user input into $s0
 jr	$ra				
 
 ### PRINTS THE CURRENT GAMEBOARD TO THE CONSOLE
@@ -378,8 +474,11 @@ PRINTBOARD:
 la 	$t0,BOARD
 li 	$t1, 3           	# range for inner and outer loops
 li 	$t2,0            	# outer loop counter
+li  $t4,0               # position counter for printing
+li  $t5,1               # for branching 
 
 OuterLoop:
+
 beq 	$t2,$t1,EXPRINTBOARD    # exit printboard after done printing
 li 	$t3,0            	# inner loop counter
 addiu 	$t2,1         		# increment outer loop counter
@@ -387,15 +486,52 @@ lb  	$a0,EOL         	# Print a new line
 li  	$v0,11          
 syscall
 
+
 InnerLoop:
 beq 	$t3,$t1,OuterLoop 	# jump out to outer when done
 addiu   $t3,1      		# incrememnt inner loop counter
+addi    $t4,1           # increment the position counter
 
-li  	$v0,1           	# Print the data
+
 lw  	$a0, 0($t0)
-syscall
+beq     $a0,$zero,PRINTPOS     # if position empty print pos
+beq     $a0,$t5,PRINTX          # if a one print X for computer pos
+j		PRINTO				    # else jump to PRINTO
+
+
+PRINTEND:
 addiu 	$t0,4         		# increment address of t0 for the next print
 j 	InnerLoop        
+
+PRINTX:
+lb  $a0,X
+li  $v0,11
+syscall
+li  $v0,4
+la  $a0,GAP
+syscall
+
+j PRINTEND
+
+PRINTO:
+lb  $a0,O
+li  $v0,11
+syscall
+li  $v0,4
+la  $a0,GAP
+syscall
+
+j PRINTEND
+
+PRINTPOS:
+move  $a0,$t4
+li  $v0,1
+syscall
+li  $v0,4
+la  $a0,GAP
+syscall
+
+j PRINTEND
 
 EXPRINTBOARD:
 lb  	$a0,EOL         	# Print a new line
